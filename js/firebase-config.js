@@ -1,8 +1,9 @@
-// Pega aquí la configuración de TU proyecto de Firebase (Configuración del proyecto > Tus apps > Web).
-// Estos valores son públicos por diseño: no dan acceso por sí solos. La seguridad la dan las reglas de firestore.rules.
 export const firebaseConfig = {
-  apiKey: "TU_API_KEY",
-  authDomain: "TU_PROYECTO.firebaseapp.com",
-  projectId: "TU_PROYECTO",
-  appId: "TU_APP_ID"
+  apiKey: "AIzaSyBAfOQ6fdwE8ybeBKeDKOEuty_6_dbVIP0",
+  authDomain: "snap-miss-estrellita.firebaseapp.com",
+  projectId: "snap-miss-estrellita",
+  storageBucket: "snap-miss-estrellita.firebasestorage.app",
+  messagingSenderId: "502828302810",
+  appId: "1:502828302810:web:81e8c99c0f4ed4c50dc0e3",
+  measurementId: "G-612WX43HQ9"
 };
