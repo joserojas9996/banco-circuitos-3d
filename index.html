@@ -1,0 +1,115 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Circuitos 3D">
+<meta name="color-scheme" content="light dark">
+<title>Banco de Circuitos 3D</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Semi+Condensed:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<link rel="stylesheet" href="css/app.css">
+</head>
+<body>
+
+<!-- Pantalla de acceso -->
+<main class="auth" id="auth" hidden>
+  <section class="card" aria-labelledby="authTitle">
+    <p class="eyebrow">Acceso al laboratorio</p>
+    <h1 id="authTitle">Banco de Circuitos 3D</h1>
+    <div class="tabs" role="tablist" aria-label="Forma de acceso">
+      <button class="tab" id="tabAdmin" type="button" role="tab" aria-selected="true" aria-controls="formAdmin">Administrador</button>
+      <button class="tab" id="tabPin" type="button" role="tab" aria-selected="false" aria-controls="formPin">Tengo un PIN</button>
+    </div>
+    <form id="formAdmin" class="form" autocomplete="on" novalidate>
+      <label for="email">Correo</label>
+      <input id="email" name="email" type="email" inputmode="email" autocomplete="username" autocapitalize="none" spellcheck="false" required>
+      <label for="password">Contraseña</label>
+      <input id="password" name="password" type="password" autocomplete="current-password" required>
+      <button class="primary" id="btnAdmin" type="submit">Entrar</button>
+    </form>
+    <form id="formPin" class="form" autocomplete="off" novalidate hidden>
+      <label for="pin">PIN de 8 caracteres</label>
+      <input id="pin" name="pin" class="pin-input" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="9" placeholder="XXXX-XXXX" required>
+      <p class="note">Pídelo al administrador. Dura 5 minutos y funciona una sola vez.</p>
+      <button class="primary" id="btnPin" type="submit">Entrar con PIN</button>
+    </form>
+    <p class="msg" id="authMsg" role="alert" aria-live="polite" hidden></p>
+  </section>
+</main>
+
+<!-- Laboratorio (se muestra solo con sesión válida) -->
+<div class="app" id="app" hidden>
+  <header class="top">
+    <h1>Banco de Circuitos 3D</h1>
+    <div class="tools">
+      <label><span class="sr">Ejemplos</span>
+        <select id="examples"><option value="">Ejemplos…</option></select>
+      </label>
+      <button class="btn" id="bPause" type="button">Pausar</button>
+      <button class="btn" id="bFlow" type="button" aria-pressed="true">Corriente</button>
+      <button class="btn" id="bVolt" type="button" aria-pressed="false">Voltaje</button>
+      <button class="btn" id="bSound" type="button" aria-pressed="false">Sonido</button>
+      <button class="btn" id="bLimit" type="button" aria-pressed="true">Cantidad del kit</button>
+      <button class="btn" id="bView" type="button">Vista</button>
+      <button class="btn" id="bClear" type="button">Limpiar</button>
+    </div>
+    <div class="sessbar" id="sessBar" hidden>
+      <span class="chip" id="sessRole"></span>
+      <span class="chip" id="sessLeft"></span>
+      <button class="btn" id="bPin" type="button" hidden>PIN de acceso</button>
+      <button class="btn" id="bLogout" type="button">Salir</button>
+    </div>
+  </header>
+  <div class="main">
+    <nav class="rail" id="rail" aria-label="Piezas"></nav>
+    <section class="stage" id="stage">
+      <div class="hud" id="hud">
+        <span class="chip" id="chipSim"><i></i><span>Simulando</span></span>
+        <span class="chip" id="chipCell">Casilla <span class="mono" id="cellTxt">—</span></span>
+        <span class="chip warn" id="chipWarn" hidden><i></i><span id="warnText"></span></span>
+        <span class="chip" id="chipLegend" hidden><span class="mono">0 V</span><span class="ramp"></span><span class="mono">3 V</span></span>
+      </div>
+      <div class="hint" id="hint"><span id="hintText"></span><button class="btn" id="bRotHint" type="button" hidden>Girar (R)</button></div>
+      <aside class="insp" id="insp" hidden>
+        <h3><span id="iName"></span><small id="iSub"></small></h3>
+        <dl>
+          <dt>Tensión</dt><dd id="iV"></dd>
+          <dt>Corriente</dt><dd id="iI"></dd>
+          <dt>Potencia</dt><dd id="iP"></dd>
+          <dt>Estado</dt><dd id="iS"></dd>
+        </dl>
+        <label class="lightrow" id="lightRow" hidden><span>Luz</span><input type="range" id="light" min="0" max="100" value="80"></label>
+        <div class="row" id="iBtns"><button class="btn" id="bRot" type="button">Girar</button><button class="btn" id="bDel" type="button">Eliminar</button></div>
+      </aside>
+    </section>
+  </div>
+</div>
+
+
+<!-- Panel del administrador: generar PIN -->
+<div class="overlay" id="pinPanel" hidden>
+  <section class="sheet" role="dialog" aria-modal="true" aria-labelledby="pinTitle">
+    <header class="sheet-head">
+      <h2 id="pinTitle">PIN de acceso</h2>
+      <button class="btn" id="pinClose" type="button">Cerrar</button>
+    </header>
+    <p class="note">Cada PIN dura 5 minutos y solo permite un ingreso. La sesión del invitado dura 1 hora.</p>
+    <button class="primary" id="pinGen" type="button">Generar PIN nuevo</button>
+    <div class="pin-fresh" id="pinFresh" hidden>
+      <output class="pin-code" id="pinCode" aria-live="polite"></output>
+      <span class="pin-left" id="pinLeft"></span>
+      <button class="btn" id="pinCopy" type="button">Copiar</button>
+    </div>
+    <h3>PIN activos</h3>
+    <ul class="pin-list" id="pinList"></ul>
+    <p class="msg" id="pinMsg" role="alert" hidden></p>
+  </section>
+</div>
+
+<script type="module" src="js/auth.js"></script>
+</body>
+</html>
