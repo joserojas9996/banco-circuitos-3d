@@ -6,7 +6,7 @@ import {getFirestore,doc,getDoc,setDoc,deleteDoc,collection,getDocs,serverTimest
 import {firebaseConfig} from './firebase-config.js';
 
 const PIN_MS=5*60*1000, SESSION_MS=60*60*1000;
-const ALPHABET='ABCDEFGHJKMNPQRSTUVWXYZ23456789'; // sin I, L, O, 0, 1 para evitar confusiones
+const ALPHABET='ABCDEFGHJKMNPQRSTUVWXYZ23456789';
 const $=(id)=>document.getElementById(id);
 const els={auth:$('auth'),app:$('app'),msg:$('authMsg')};
 
@@ -37,8 +37,6 @@ const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
 console.log('Proyecto Firebase:', app.options.projectId);
-console.log('Base de datos Firestore:', db._databaseId?.database);
-console.log('ID del proyecto Firestore:', db._databaseId?.projectId);
 
 /* ===== Pestañas ===== */
 function pickTab(which){
@@ -66,7 +64,6 @@ async function enter(role,endMs,user){
   els.auth.hidden=true;els.app.hidden=false;
   $('sessBar').hidden=false;$('bPin').hidden=role!=='admin';
   $('sessRole').textContent=role==='admin'?'Administrador':'Invitado';
-  // Solo los invitados caducan a los 60 minutos.
   clearTimeout(reloadTimer);
   if(role==='guest')reloadTimer=setTimeout(()=>location.reload(),Math.max(0,endMs-Date.now())+500);
   clearInterval(tick);
@@ -93,9 +90,10 @@ async function resolveSession(user){
       if(!adm.exists())throw new Error('sin-sesion');
       await enter('admin',Infinity,user);
     }
-  }catch(_){
+  }catch(err){
+    console.error('No se pudo restaurar la sesión:',err);
     sessionStorage.removeItem('loginAt');
-    try{if(user.isAnonymous)await deleteUser(user);else await signOut(auth);}catch(__){try{await signOut(auth);}catch(___){}}
+    try{if(user.isAnonymous)await deleteUser(user);else await signOut(auth);}catch(__){try{await signOut(auth);}catch(___) {}}
     showLogin();
   }
 }
@@ -119,33 +117,23 @@ $('formAdmin').addEventListener('submit',async(e)=>{
   try{
     await setPersistence(auth,browserSessionPersistence);
     const cred=await signInWithEmailAndPassword(auth,email,pass);
-    const adminRef = doc(db, 'admins', cred.user.uid);
-
-console.log('Proyecto:', db.app.options.projectId);
-console.log('Ruta consultada:', adminRef.path);
-console.log('UID autenticado:', cred.user.uid);
-
-const adm = await getDoc(adminRef);
-console.log('Administrador encontrado:', adm.exists());
-
-    
-   const adm = await getDoc(doc(db, 'admins', cred.user.uid));
-  console.log('UID autenticado:', cred.user.uid);
-  console.log('Administrador encontrado:', adm.exists());
-    if(!adm||!adm.exists()){await signOut(auth);setMsg(els.msg,'Esta cuenta no tiene permisos de administrador.');return;}
+    const adminRef=doc(db,'admins',cred.user.uid);
+    console.log('Proyecto:',app.options.projectId);
+    console.log('Ruta consultada:',adminRef.path);
+    console.log('UID autenticado:',cred.user.uid);
+    const adm=await getDoc(adminRef);
+    console.log('Administrador encontrado:',adm.exists());
+    if(!adm.exists()){
+      await signOut(auth);
+      setMsg(els.msg,'Esta cuenta no tiene permisos de administrador.');
+      return;
+    }
     $('password').value='';busy=false;await resolveSession(cred.user);
-
   }catch(err){
-    console.error('Error de autenticación o Firestore:', err);
-
-    setMsg(
-      els.msg,
-      AUTH_ERR[err?.code] ||
-      `Error de Firebase: ${err?.code || err?.message || 'desconocido'}`
-    );
+    console.error('Error de autenticación o Firestore:',err);
+    setMsg(els.msg,AUTH_ERR[err?.code]||`Error de Firebase: ${err?.code||err?.message||'desconocido'}`);
   }finally{
-    busy=false;
-    setBusy($('btnAdmin'),false,'Entrar');
+    busy=false;setBusy($('btnAdmin'),false,'Entrar');
   }
 });
 
@@ -160,11 +148,11 @@ $('formPin').addEventListener('submit',async(e)=>{
   try{
     await setPersistence(auth,browserSessionPersistence);
     user=(await signInAnonymously(auth)).user;
-    // El PIN NO se consume: muchos invitados pueden crear sesiones independientes.
-    // Las reglas verifican en el servidor que el PIN exista y siga vigente.
+    // El PIN no se consume: permite múltiples sesiones individuales.
     await setDoc(doc(db,'sessions',user.uid),{pin:code,createdAt:serverTimestamp()});
     $('pin').value='';busy=false;await resolveSession(user);
   }catch(err){
+    console.error('Error al canjear PIN:',err);
     if(user){try{await deleteUser(user);}catch(_){try{await signOut(auth);}catch(__){}}}
     const offline=err&&(err.code==='unavailable'||err.code==='auth/network-request-failed');
     setMsg(els.msg,offline?'Sin conexión. Revisa tu internet.':
@@ -207,7 +195,7 @@ async function loadPins(){
   for(const d of snap.docs){
     const c=tsMillis(d.data().createdAt);
     if(c&&c+PIN_MS>now)out.push({code:d.id,end:c+PIN_MS});
-    else deleteDoc(d.ref).catch(()=>{}); // limpia los vencidos
+    else deleteDoc(d.ref).catch(()=>{});
   }
   pins=out;renderPins();
 }
@@ -228,7 +216,7 @@ $('pinGen').addEventListener('click',async()=>{
     await setDoc(ref,{createdAt:serverTimestamp(),createdBy:auth.currentUser.uid});
     const c=tsMillis((await getDoc(ref)).data().createdAt)||Date.now();
     freshCode=code;pins.unshift({code:code,end:c+PIN_MS});renderPins();
-  }catch(_){setMsg($('pinMsg'),'No se pudo generar el PIN. Comprueba que tu cuenta sea administradora y que las reglas estén publicadas.');}
+  }catch(err){console.error('Error al generar PIN:',err);setMsg($('pinMsg'),'No se pudo generar el PIN. Comprueba que tu cuenta sea administradora y que las reglas estén publicadas.');}
   finally{setBusy($('pinGen'),false,'Generar PIN nuevo');}
 });
 $('pinCopy').addEventListener('click',async()=>{
@@ -238,8 +226,6 @@ $('pinCopy').addEventListener('click',async()=>{
   catch(_){const r=document.createRange();r.selectNodeContents($('pinCode'));const s=getSelection();s.removeAllRanges();s.addRange(r);btn.textContent='Selecciona y copia';}
   setTimeout(()=>{btn.textContent='Copiar';},1800);
 });
-
-// Si el dispositivo estuvo suspendido, volver a validar al reanudar la pestaña.
 document.addEventListener('visibilitychange',()=>{
   if(!document.hidden && session && session.role==='guest' && Date.now()>=session.end)location.reload();
 });
