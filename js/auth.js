@@ -119,6 +119,16 @@ $('formAdmin').addEventListener('submit',async(e)=>{
   try{
     await setPersistence(auth,browserSessionPersistence);
     const cred=await signInWithEmailAndPassword(auth,email,pass);
+    const adminRef = doc(db, 'admins', cred.user.uid);
+
+console.log('Proyecto:', db.app.options.projectId);
+console.log('Ruta consultada:', adminRef.path);
+console.log('UID autenticado:', cred.user.uid);
+
+const adm = await getDoc(adminRef);
+console.log('Administrador encontrado:', adm.exists());
+
+    
    const adm = await getDoc(doc(db, 'admins', cred.user.uid));
   console.log('UID autenticado:', cred.user.uid);
   console.log('Administrador encontrado:', adm.exists());
