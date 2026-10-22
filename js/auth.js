@@ -36,6 +36,9 @@ if(!configured){
 const app=initializeApp(firebaseConfig);
 const auth=getAuth(app);
 const db=getFirestore(app);
+console.log('Proyecto Firebase:', app.options.projectId);
+console.log('Base de datos Firestore:', db._databaseId?.database);
+console.log('ID del proyecto Firestore:', db._databaseId?.projectId);
 
 /* ===== Pestañas ===== */
 function pickTab(which){
