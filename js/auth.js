@@ -116,12 +116,24 @@ $('formAdmin').addEventListener('submit',async(e)=>{
   try{
     await setPersistence(auth,browserSessionPersistence);
     const cred=await signInWithEmailAndPassword(auth,email,pass);
-    const adm=await getDoc(doc(db,'admins',cred.user.uid)).catch(()=>null);
+   const adm = await getDoc(doc(db, 'admins', cred.user.uid));
+  console.log('UID autenticado:', cred.user.uid);
+  console.log('Administrador encontrado:', adm.exists());
     if(!adm||!adm.exists()){await signOut(auth);setMsg(els.msg,'Esta cuenta no tiene permisos de administrador.');return;}
     $('password').value='';busy=false;await resolveSession(cred.user);
+
   }catch(err){
-    setMsg(els.msg,AUTH_ERR[err&&err.code]||'No se pudo iniciar sesión. Inténtalo de nuevo.');
-  }finally{busy=false;setBusy($('btnAdmin'),false,'Entrar');}
+    console.error('Error de autenticación o Firestore:', err);
+
+    setMsg(
+      els.msg,
+      AUTH_ERR[err?.code] ||
+      `Error de Firebase: ${err?.code || err?.message || 'desconocido'}`
+    );
+  }finally{
+    busy=false;
+    setBusy($('btnAdmin'),false,'Entrar');
+  }
 });
 
 /* ===== Entrar con PIN ===== */
