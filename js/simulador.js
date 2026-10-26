@@ -431,7 +431,7 @@ function edgeLabel(t,x,z){
   const tx=new THREE.CanvasTexture(c);scene.add(flatPlane(.5,.5,tx,x,.004,z));
 }
 for(let c=0;c<COLS;c++){const t=String(c+1);edgeLabel(t,c+.5-COLS/2,ROWS/2+.42);edgeLabel(t,c+.5-COLS/2,-ROWS/2-.42);}
-for(let r=0;r<ROWS;r++){const t=ROW_LABELS[ROWS-1-r];edgeLabel(t,-COLS/2-.42,r+.5-ROWS/2);edgeLabel(t,COLS/2+.42,r+.5-ROWS/2);}
+for(let r=0;r<ROWS;r++){const t=ROW_LABELS[r];edgeLabel(t,-COLS/2-.42,r+.5-ROWS/2);edgeLabel(t,COLS/2+.42,r+.5-ROWS/2);}
 const dummy=new THREE.Object3D();
 const studs=new THREE.InstancedMesh(new THREE.CylinderGeometry(.13,.15,BASE_Y,20),mat('#ffffff',{roughness:.35,metalness:.6}),COLS*ROWS);
 studs.receiveShadow=true;scene.add(studs);
