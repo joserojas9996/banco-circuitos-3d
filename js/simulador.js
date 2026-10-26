@@ -38,7 +38,7 @@ function geo(d,x,y,r,x2,y2){
 const key=(c)=>c[1]*COLS+c[0];
 // Coordenadas: X numerado 1–10; Y con letras de arriba a abajo (A, B, C, D, F, G, H).
 const ROW_LABELS='ABCDFGH';
-const cellName=(c,r)=>String(c+1)+ROW_LABELS[ROWS-1-r];
+const cellName=(c,r)=>String(c+1)+ROW_LABELS[r];
 
 /* ===== Simulador DC / transitorio (nodos = broches de la base) ===== */
 // SIM-START
