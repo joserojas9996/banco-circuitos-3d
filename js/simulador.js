@@ -936,42 +936,69 @@ function ensureAudio(){
     gn=actx.createGain();gn.gain.value=0;osc.connect(gn);gn.connect(actx.destination);osc.start();
   }catch(_){actx=null;}
 }
-const NOTES=[262,262,392,392,440,440,392,0,349,349,330,330,294,294,262,0];
+// Melodía navideña original basada en Jingle Bells (dominio público), notas y silencios.
+// Cada paso dura 250 ms. El oscilador solo genera audio al activar el botón Sonido.
+const CHRISTMAS_NOTES=[
+  330,330,330,0, 330,330,330,0, 330,392,262,294,330,0,0,0,
+  349,349,349,349, 349,330,330,330, 330,294,294,330,294,0,392,0,
+  330,330,330,0, 330,330,330,0, 330,392,262,294,330,0,0,0,
+  349,349,349,349, 349,330,330,330, 392,392,349,294,262,0,0,0
+];
 function tone(src,t){
   switch(src){
-    case 'music':return{f:NOTES[Math.floor(t*4)%NOTES.length]||1,w:'triangle'};
-    case 'alarm':return{f:650+550*(.5+.5*Math.sin(t*7.5)),w:'square'};
-    case 'space':return{f:Math.max(120,2200-(t%.7)*3200),w:'sawtooth'};
-    default:return{f:1100+1900*((t%1.6)/1.6),w:'sine'};
+    case 'music':return{f:CHRISTMAS_NOTES[Math.floor(t*4)%CHRISTMAS_NOTES.length],w:'triangle'};
+    case 'alarm':return{f:620+480*(.5+.5*Math.sin(t*5.5)),w:'square'};
+    case 'space':return{f:Math.max(110,1850-(t%1.15)*1450),w:'sawtooth'};
+    default:return{f:1000,w:'sine'};
   }
 }
 function updateSound(now,tt){
-  // nodos unidos por conductores
-  const uf=new Map();const find=(x)=>{while(uf.has(x)&&uf.get(x)!==x)x=uf.get(x);return x;};
+  // Componentes conductores y terminales equivalentes de los IC forman redes.
+  // Consideramos todos los broches, no solo el primero y el último.
+  const parent=new Map();
+  const find=(x)=>{
+    if(!parent.has(x))parent.set(x,x);
+    let root=x;
+    while(parent.get(root)!==root)root=parent.get(root);
+    while(parent.get(x)!==x){const next=parent.get(x);parent.set(x,root);x=next;}
+    return root;
+  };
+  const join=(a,b)=>{if(a===undefined||b===undefined)return;const ra=find(a),rb=find(b);if(ra!==rb)parent.set(ra,rb);};
   for(const p of parts){
-    if(p.hidden)continue;const k=p.def.kind;
-    const cond=k==='wire'||k==='jumper'||(k==='switch'&&p.on)||(k==='button'&&p.pressed);
-    if(cond){if(!uf.has(p.a))uf.set(p.a,p.a);if(!uf.has(p.b))uf.set(p.b,p.b);uf.set(find(p.a),find(p.b));}
+    if(p.hidden)continue;
+    const k=p.def.kind;
+    if(k==='wire'||k==='jumper'||(k==='switch'&&p.on)||(k==='button'&&p.pressed)){
+      const pins=p.tk||[];
+      for(let i=1;i<pins.length;i++)join(pins[0],pins[i]);
+    }
+    // Las dos tomas adicionales del módulo IC comparten red con la salida y el negativo.
+    if(k==='ic'&&p.tk&&p.tk.length>=5){join(p.tk[3],p.c);join(p.tk[4],p.b);}
   }
-  const cls=(x)=>uf.has(x)?find(x):x;
+  const same=(a,b)=>a!==undefined&&b!==undefined&&find(a)===find(b);
+  const powered=parts.filter(p=>!p.hidden&&p.def.kind==='ic'&&p.vs>1.8);
   let src=null;
   for(const p of parts){
     if(p.def.kind!=='speaker'&&p.def.kind!=='whistle')continue;
-    if(!p.hidden&&Math.abs(p.I)>.003)p.actT=now;
-    let s=null;
-    if(!p.hidden&&p.actT&&now-p.actT<250&&!paused){
-      for(const ic of parts){
-        if(ic.def.kind!=='ic'||ic.hidden||ic.vs<=1.8)continue;
-        const co=cls(ic.c);if(co===cls(p.a)||co===cls(p.b)){s=ic.def.snd;break;}
+    let active=null;
+    if(!p.hidden&&!paused){
+      for(const ic of powered){
+        // La bocina debe cerrar circuito entre la salida del IC y su retorno.
+        if((same(p.a,ic.c)&&same(p.b,ic.b))||(same(p.b,ic.c)&&same(p.a,ic.b))){
+          active=ic.def.snd;break;
+        }
       }
-      if(!s&&p.def.kind==='whistle')s='whistle';
+      // El silbador puede funcionar sin chip IC cuando circula corriente por él.
+      if(!active&&p.def.kind==='whistle'&&Math.abs(p.I)>0.003)active='whistle';
     }
-    p.snd=!!s;if(s&&!src)src=s;
+    p.snd=!!active;
+    if(active&&!src)src=active;
   }
-  if(actx&&gn){
-    const on=soundOn&&!!src;
-    if(src){const t=tone(src,tt);osc.type=t.w;osc.frequency.setTargetAtTime(t.f,actx.currentTime,.01);}
-    gn.gain.setTargetAtTime(on?.03:0,actx.currentTime,.03);
+  if(actx&&gn&&osc){
+    const on=soundOn&&!!src&&actx.state==='running';
+    const note=src?tone(src,tt):null;
+    const freq=note&&note.f>0?note.f:440;
+    if(note){osc.type=note.w;osc.frequency.setTargetAtTime(freq,actx.currentTime,.012);}
+    gn.gain.setTargetAtTime(on&&note&&note.f>0?.045:0,actx.currentTime,.025);
   }
 }
 
