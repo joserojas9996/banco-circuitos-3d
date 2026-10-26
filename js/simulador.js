@@ -929,13 +929,25 @@ function updateInspector(dt){
 $('light').addEventListener('input',e=>{if(selected&&selected.def.kind==='photo'){selected.light=(+e.target.value)/100;dirty=true;}});
 
 /* ===== Sonido: la bocina o el chip silbador suenan según el circuito que los excita ===== */
-let actx=null,osc=null,gn=null;
-function ensureAudio(){
-  if(actx){if(actx.state==='suspended')actx.resume();return;}
+let actx=null,osc=null,gn=null,audioTestUntil=0;
+async function ensureAudio(){
   try{
-    actx=new(window.AudioContext||window.webkitAudioContext)();osc=actx.createOscillator();osc.type='square';osc.frequency.value=440;
-    gn=actx.createGain();gn.gain.value=0;osc.connect(gn);gn.connect(actx.destination);osc.start();
-  }catch(_){actx=null;}
+    if(!actx){
+      const AudioContextClass=window.AudioContext||window.webkitAudioContext;
+      if(!AudioContextClass)throw new Error('El navegador no soporta Web Audio');
+      actx=new AudioContextClass();
+      osc=actx.createOscillator();
+      gn=actx.createGain();
+      osc.type='triangle';osc.frequency.value=440;gn.gain.value=0;
+      osc.connect(gn);gn.connect(actx.destination);osc.start();
+    }
+    if(actx.state!=='running')await actx.resume();
+    if(actx.state!=='running')console.warn('Audio pendiente de autorización:',actx.state);
+    return actx.state==='running';
+  }catch(err){
+    console.error('No se pudo habilitar el audio:',err);
+    return false;
+  }
 }
 // Melodía navideña original basada en Jingle Bells (dominio público), notas y silencios.
 // Cada paso dura 250 ms. El oscilador solo genera audio al activar el botón Sonido.
@@ -995,6 +1007,7 @@ function updateSound(now,tt){
     if(active&&!src)src=active;
   }
   if(actx&&gn&&osc){
+    if(actx.currentTime<audioTestUntil)return;
     const on=soundOn&&!!src&&actx.state==='running';
     const note=src?tone(src,tt):null;
     const freq=note&&note.f>0?note.f:440;
@@ -1008,7 +1021,26 @@ $('examples').addEventListener('change',e=>{if(e.target.value!==''){stopPlacing(
 $('bPause').addEventListener('click',()=>{paused=!paused;$('bPause').textContent=paused?'Reanudar':'Pausar';dirty=true;});
 $('bFlow').addEventListener('click',()=>{showFlow=!showFlow;$('bFlow').setAttribute('aria-pressed',String(showFlow));});
 $('bVolt').addEventListener('click',()=>{showVolt=!showVolt;$('bVolt').setAttribute('aria-pressed',String(showVolt));$('chipLegend').hidden=!showVolt;});
-$('bSound').addEventListener('click',()=>{soundOn=!soundOn;$('bSound').setAttribute('aria-pressed',String(soundOn));if(soundOn)ensureAudio();});
+$('bSound').addEventListener('click',async()=>{
+  soundOn=!soundOn;
+  $('bSound').setAttribute('aria-pressed',String(soundOn));
+  if(soundOn){
+    // El click es un gesto del usuario autorizado para reanudar Web Audio.
+    const ready=await ensureAudio();
+    console.info('Audio:',ready?'habilitado':'suspendido',actx?actx.state:'sin contexto');
+    if(ready&&osc&&gn){
+      // Prueba audible breve para distinguir el audio del navegador de las conexiones.
+      const t=actx.currentTime;
+      osc.type='sine';osc.frequency.setValueAtTime(660,t);
+      gn.gain.cancelScheduledValues(t);
+      gn.gain.setValueAtTime(.06,t);
+      audioTestUntil=t+.22;
+      gn.gain.setTargetAtTime(0,t+.18,.025);
+    }
+  }else if(actx&&gn){
+    gn.gain.setTargetAtTime(0,actx.currentTime,.015);
+  }
+});
 $('bLimit').addEventListener('click',()=>{limitOn=!limitOn;$('bLimit').setAttribute('aria-pressed',String(limitOn));syncRail();});
 $('bView').addEventListener('click',resetCamera);
 $('bClear').addEventListener('click',()=>{stopPlacing();clearAll();setHint();});
