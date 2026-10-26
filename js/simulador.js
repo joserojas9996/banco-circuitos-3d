@@ -1093,6 +1093,11 @@ function frame(now){
   if(overTime>.4)w='Cortocircuito: la batería entrega '+si(lastSim.maxBat,'A');
   else if(parts.some(p=>p.def.kind==='led'&&!p.hidden&&p.I>.04))w='LED con demasiada corriente: añade una resistencia';
   else if(!parts.some(p=>p.def.kind==='battery'&&!p.hidden)&&parts.length)w='Falta el porta pilas';
+  else if(soundOn&&!paused&&parts.some(p=>p.def.kind==='speaker'&&!p.hidden)&&parts.some(p=>p.def.kind==='ic'&&!p.hidden)){
+    const chips=parts.filter(p=>p.def.kind==='ic'&&!p.hidden);
+    if(chips.every(p=>p.vs<=1.8))w='Sin música: '+chips.map(p=>p.def.code+' recibe '+si(p.vs,'V')).join(', ')+'. Revisa + y − del chip.';
+    else if(!parts.some(p=>p.def.kind==='speaker'&&!p.hidden&&p.snd))w='Sin música: revisa que la bocina una la salida del chip con su retorno o alimentación.';
+  }
   if(w!==warnShown){warnShown=w;$('chipWarn').hidden=!w;$('warnText').textContent=w;}
   renderer.render(scene,camera);
   requestAnimationFrame(frame);
