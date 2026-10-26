@@ -995,8 +995,13 @@ function updateSound(now,tt){
     let active=null;
     if(!p.hidden&&!paused){
       for(const ic of powered){
-        // La bocina debe cerrar circuito entre la salida del IC y su retorno.
-        if((same(p.a,ic.c)&&same(p.b,ic.b))||(same(p.b,ic.c)&&same(p.a,ic.b))){
+        // La bocina del kit puede compartir la línea positiva o el retorno,
+        // dependiendo del proyecto del manual. Un borne debe llegar a la
+        // salida del IC y el otro a uno de sus rieles de alimentación.
+        const outputA=same(p.a,ic.c),outputB=same(p.b,ic.c);
+        const supplyA=same(p.a,ic.a)||same(p.a,ic.b);
+        const supplyB=same(p.b,ic.a)||same(p.b,ic.b);
+        if((outputA&&supplyB)||(outputB&&supplyA)){
           active=ic.def.snd;break;
         }
       }
@@ -1028,6 +1033,10 @@ $('bSound').addEventListener('click',async()=>{
     // El click es un gesto del usuario autorizado para reanudar Web Audio.
     const ready=await ensureAudio();
     console.info('Audio:',ready?'habilitado':'suspendido',actx?actx.state:'sin contexto');
+    console.table(parts.filter(p=>!p.hidden&&(p.def.kind==='ic'||p.def.kind==='speaker')).map(p=>({
+      componente:p.def.code,voltaje:p.V,alimentacionIC:p.def.kind==='ic'?p.vs:null,
+      sonidoDetectado:p.snd,terminalA:p.a,terminalB:p.b,terminalSalida:p.c
+    })));
     if(ready&&osc&&gn){
       // Prueba audible breve para distinguir el audio del navegador de las conexiones.
       const t=actx.currentTime;
