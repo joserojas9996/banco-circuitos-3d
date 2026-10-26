@@ -9,7 +9,8 @@ const ledP=(Vf)=>{const nvt=2*VT,Is=0.01/Math.exp(Vf/nvt);return{nvt:nvt,Is:Is,v
 const BLUE='#3b6db3';
 [[1,3],[2,6],[3,3],[4,1],[5,1],[6,1]].forEach(a=>{
   const n=a[0];
-  def('blk'+n,{kind:'wire',code:String(n),L:n,W:1,term:n===1?[[0,0],[0,0]]:[[0,0],[n-1,0]],
+  def('blk'+n,{kind:'wire',code:String(n),L:n,W:1,// Primero los extremos (compatibilidad con la simulación), después cada broche intermedio.
+    term:n===1?[[0,0],[0,0]]:[[0,0],[n-1,0],...Array.from({length:n-2},(_,i)=>[i+1,0])],
     name:'Bloque #'+n,sub:n===1?'1 broche':n+' broches',qty:a[1],color:BLUE});
 });
 def('wc',{kind:'whistle',code:'WC',label:'WC SILBADOR',L:3,W:1,term:[[0,0],[2,0]],R:150,name:'Chip silbador',sub:'silba al energizarse',qty:1,color:'#d4453d'});
@@ -76,6 +77,13 @@ function simulate(parts,dt,commit){
   const els=[];
   for(const p of act){
     els.push({p:p,role:'main',ia:idx(p.a),ib:idx(p.b),g:0,ieq:0});
+    if(p.def.kind==='wire'){
+      // Cada broche intermedio está conectado eléctricamente al bloque entero.
+      // El bloque #1 mantiene su único punto de conexión.
+      for(let i=2;i<p.tk.length;i++){
+        els.push({p:p,role:'wireLink',ia:idx(p.a),ib:idx(p.tk[i]),g:0,ieq:0});
+      }
+    }
     if(p.def.kind==='ic'){
       els.push({p:p,role:'outH',ia:idx(p.a),ib:idx(p.c),g:0,ieq:0});
       els.push({p:p,role:'outL',ia:idx(p.c),ib:idx(p.b),g:0,ieq:0});
@@ -93,7 +101,7 @@ function simulate(parts,dt,commit){
     for(let i=0;i<n;i++)A[i*n+i]+=GMIN;
     for(const e of els){
       const p=e.p,d=p.def;let g=0,ieq=0;
-      if(e.role==='icLink')g=1/RW;
+      if(e.role==='wireLink'||e.role==='icLink')g=1/RW;
        else if(e.role==='outH')g=p.drive?1/ROUT:1e-9;
       else if(e.role==='outL')g=p.drive?1e-9:1/ROUT;
       else switch(d.kind){
@@ -127,7 +135,7 @@ function simulate(parts,dt,commit){
   let maxBat=0;
   for(const e of els){
     const p=e.p,va=e.ia>=0?V[e.ia]:0,vb=e.ib>=0?V[e.ib]:0,vv=va-vb,ii=e.g*vv+e.ieq;
-    if(e.role==='icLink')continue;
+    if(e.role==='wireLink'||e.role==='icLink')continue;
      if(e.role==='outH'){p.Io=ii;continue;}
     if(e.role==='outL')continue;
     p.V=vv;p.I=ii;p.P=vv*ii;
@@ -575,7 +583,12 @@ function drawTile(x,d,w,h){
   }
   x.fillStyle=col;pill(x,1,2,w-2,h-4,6);x.fill();
   x.fillStyle='rgba(255,255,255,.55)';
-  [[7,h/2],[w-7,h/2]].forEach(c=>{x.beginPath();x.arc(c[0],c[1],2.6,0,Math.PI*2);x.fill();});
+  // Vista previa de la cantidad real de broches, incluidos los intermedios.
+  const pins=d.kind==='wire'?d.L:2;
+  for(let i=0;i<pins;i++){
+    const px=pins===1?w/2:7+(w-14)*i/(pins-1);
+    x.beginPath();x.arc(px,h/2,2.6,0,Math.PI*2);x.fill();
+  }
   const dark=['#cdb9bb','#c9c9cc','#d9a38c','#dcc3c3','#e8cf45'].indexOf(col)>=0;
   x.fillStyle=dark?'#2a2a2a':'#ffffff';x.font='700 12px "Barlow Semi Condensed",sans-serif';x.textAlign='center';x.textBaseline='middle';
   x.fillText(d.code,w/2,h/2+1);
