@@ -20,9 +20,9 @@ def('d1',Object.assign({kind:'led',code:'D1',label:'D1 LED',L:3,W:1,term:[[0,0],
 def('l1',{kind:'lamp',code:'L1',label:'L1 LÁMPARA',L:3,W:1,term:[[0,0],[2,0]],R:16,name:'Lámpara',sub:'2,5 V · 0,2 A',qty:1,color:'#c9c9cc'});
 def('b1',{kind:'battery',code:'B1',label:'B1 · 3 V',L:3,W:2,term:[[0,0],[2,0]],E:3,r:0.5,name:'Porta pilas',sub:'2 × AA 1,5 V',qty:1,color:'#d9a38c'});
 def('sp',{kind:'speaker',code:'SP',label:'SP BOCINA',L:3,W:1,term:[[0,0],[2,0]],R:8,name:'Bocina',sub:'8 Ω',qty:1,color:'#d4453d'});
-def('u1',{kind:'ic',snd:'music',code:'U1',label:'U1 MÚSICA',L:3,W:2,term:[[0,0],[2,1],[2,0]],name:'Circuito de música',sub:'+ izq. · − abajo · salida arriba',qty:1,color:'#3f84d4'});
-def('u2',{kind:'ic',snd:'alarm',code:'U2',label:'U2 ALARMA',L:3,W:2,term:[[0,0],[2,1],[2,0]],name:'Circuito de alarma',sub:'+ izq. · − abajo · salida arriba',qty:1,color:'#d9443c'});
-def('u3',{kind:'ic',snd:'space',code:'U3',label:'U3 GUERRA ESPACIAL',L:3,W:2,term:[[0,0],[2,1],[2,0]],name:'Circuito guerra espacial',sub:'+ izq. · − abajo · salida arriba',qty:1,color:'#43a85a'});
+def('u1',{kind:'ic',snd:'music',code:'U1',label:'U1 MÚSICA',L:3,W:2,term:[[0,0],[2,1],[2,0],[1,1],[0,1]],name:'Circuito de música',sub:'+ abajo izq. · − abajo der./arriba izq. · salida arriba centro/der.',qty:1,color:'#3f84d4'});
+def('u2',{kind:'ic',snd:'alarm',code:'U2',label:'U2 ALARMA',L:3,W:2,term:[[0,0],[2,1],[2,0],[1,1],[0,1]],name:'Circuito de alarma',sub:'+ abajo izq. · − abajo der./arriba izq. · salida arriba centro/der.',qty:1,color:'#d9443c'});
+def('u3',{kind:'ic',snd:'space',code:'U3',label:'U3 GUERRA ESPACIAL',L:3,W:2,term:[[0,0],[2,1],[2,0],[1,1],[0,1]],name:'Circuito guerra espacial',sub:'+ abajo izq. · − abajo der./arriba izq. · salida arriba centro/der.',qty:1,color:'#43a85a'});
 def('m1',{kind:'motor',code:'M1',label:'M1 MOTOR',L:3,W:1,term:[[0,0],[2,0]],R:15,name:'Motor y ventilador',sub:'3 V',qty:1,color:'#dcc3c3'});
 def('r1',{kind:'resistor',code:'R1',label:'R1 100 Ω',L:3,W:1,term:[[0,0],[2,0]],R:100,bands:['#6d3b1e','#111111','#6d3b1e'],name:'Resistencia',sub:'100 Ω',qty:1,color:'#e8cf45'});
 def('jb',{kind:'jumper',code:'—',L:1,W:1,term:[[0,0],[0,0]],name:'Puente de cable negro',sub:'une dos broches',qty:1,color:'#1d2024',maxLen:9});
@@ -36,9 +36,9 @@ function geo(d,x,y,r,x2,y2){
   return{cells:cells,terms:terms};
 }
 const key=(c)=>c[1]*COLS+c[0];
-// Etiqueta de casilla: letras en el eje X (A–J), números en el eje Y (1–7, desde el frente).
-const LETTERS='ABCDEFGHIJ';
-const cellName=(c,r)=>LETTERS[c]+(ROWS-r);
+// Coordenadas: X numerado 1–10; Y con letras de arriba a abajo (A, B, C, D, F, G, H).
+const ROW_LABELS='ABCDFGH';
+const cellName=(c,r)=>String(c+1)+ROW_LABELS[ROWS-1-r];
 
 /* ===== Simulador DC / transitorio (nodos = broches de la base) ===== */
 // SIM-START
@@ -76,7 +76,14 @@ function simulate(parts,dt,commit){
   const els=[];
   for(const p of act){
     els.push({p:p,role:'main',ia:idx(p.a),ib:idx(p.b),g:0,ieq:0});
-    if(p.def.kind==='ic'){els.push({p:p,role:'outH',ia:idx(p.a),ib:idx(p.c),g:0,ieq:0});els.push({p:p,role:'outL',ia:idx(p.c),ib:idx(p.b),g:0,ieq:0});}
+    if(p.def.kind==='ic'){
+      els.push({p:p,role:'outH',ia:idx(p.a),ib:idx(p.c),g:0,ieq:0});
+      els.push({p:p,role:'outL',ia:idx(p.c),ib:idx(p.b),g:0,ieq:0});
+      // Contactos adicionales del módulo de cinco broches: uno replica salida y otro negativo.
+      // Conservamos los tres terminales originales para no alterar los ejemplos ya existentes.
+      els.push({p:p,role:'icLink',ia:idx(p.tk[3]),ib:idx(p.c),g:0,ieq:0});
+      els.push({p:p,role:'icLink',ia:idx(p.tk[4]),ib:idx(p.b),g:0,ieq:0});
+    }
   }
   const hasLed=els.some(e=>e.p.def.kind==='led');
   let V=new Float64Array(n);
@@ -86,7 +93,8 @@ function simulate(parts,dt,commit){
     for(let i=0;i<n;i++)A[i*n+i]+=GMIN;
     for(const e of els){
       const p=e.p,d=p.def;let g=0,ieq=0;
-      if(e.role==='outH')g=p.drive?1/ROUT:1e-9;
+      if(e.role==='icLink')g=1/RW;
+       else if(e.role==='outH')g=p.drive?1/ROUT:1e-9;
       else if(e.role==='outL')g=p.drive?1e-9:1/ROUT;
       else switch(d.kind){
         case 'wire':case 'jumper':g=1/RW;break;
@@ -119,7 +127,8 @@ function simulate(parts,dt,commit){
   let maxBat=0;
   for(const e of els){
     const p=e.p,va=e.ia>=0?V[e.ia]:0,vb=e.ib>=0?V[e.ib]:0,vv=va-vb,ii=e.g*vv+e.ieq;
-    if(e.role==='outH'){p.Io=ii;continue;}
+    if(e.role==='icLink')continue;
+     if(e.role==='outH'){p.Io=ii;continue;}
     if(e.role==='outL')continue;
     p.V=vv;p.I=ii;p.P=vv*ii;
     if(p.def.kind==='ic')p.vs=Math.max(0,vv); // tensión de alimentación (+ respecto a −)
@@ -415,14 +424,14 @@ const catcher=new THREE.Mesh(new THREE.PlaneGeometry(60,60),new THREE.ShadowMate
 catcher.rotation.x=-Math.PI/2;catcher.position.y=-.41;catcher.receiveShadow=true;scene.add(catcher);
 const baseMesh=new THREE.Mesh(plateGeo(COLS+1.4,ROWS+1.4,.35,.4),mat('#2b323a',{roughness:.65}));
 baseMesh.position.y=-.4;baseMesh.receiveShadow=true;baseMesh.castShadow=true;scene.add(baseMesh);
-// Letras en el eje X (A–J) y números en el eje Y (1–7, desde el frente), en los cuatro bordes.
+// Números en X (1–10) y letras en Y (A, B, C, D, F, G, H) en los cuatro bordes.
 function edgeLabel(t,x,z){
   const c=document.createElement('canvas');c.width=c.height=64;const g=c.getContext('2d');
   g.fillStyle='#98a4ae';g.font='600 40px sans-serif';g.textAlign='center';g.textBaseline='middle';g.fillText(t,32,34);
   const tx=new THREE.CanvasTexture(c);scene.add(flatPlane(.5,.5,tx,x,.004,z));
 }
-for(let c=0;c<COLS;c++){edgeLabel(LETTERS[c],c+.5-COLS/2,ROWS/2+.42);edgeLabel(LETTERS[c],c+.5-COLS/2,-ROWS/2-.42);}
-for(let r=0;r<ROWS;r++){const t=String(ROWS-r);edgeLabel(t,-COLS/2-.42,r+.5-ROWS/2);edgeLabel(t,COLS/2+.42,r+.5-ROWS/2);}
+for(let c=0;c<COLS;c++){const t=String(c+1);edgeLabel(t,c+.5-COLS/2,ROWS/2+.42);edgeLabel(t,c+.5-COLS/2,-ROWS/2-.42);}
+for(let r=0;r<ROWS;r++){const t=ROW_LABELS[ROWS-1-r];edgeLabel(t,-COLS/2-.42,r+.5-ROWS/2);edgeLabel(t,COLS/2+.42,r+.5-ROWS/2);}
 const dummy=new THREE.Object3D();
 const studs=new THREE.InstancedMesh(new THREE.CylinderGeometry(.13,.15,BASE_Y,20),mat('#ffffff',{roughness:.35,metalness:.6}),COLS*ROWS);
 studs.receiveShadow=true;scene.add(studs);
