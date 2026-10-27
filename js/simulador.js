@@ -1025,13 +1025,22 @@ function updateSound(now,tt){
   for(const ic of parts){
     if(ic.hidden||ic.def.snd!=='music')continue;
     const energized=ic.vs>1.8&&!paused;
-    if(!energized){ic.musicUntil=0;ic.wasEnergized=false;continue;}
-    if(!ic.wasEnergized){ic.musicStart=tt;ic.musicUntil=tt+4;}
+    // No consumir la melodía mientras el navegador tiene el audio desactivado.
+    if(!energized||!soundOn){
+      ic.musicUntil=0;ic.wasEnergized=false;continue;
+    }
+    const musicLength=CHRISTMAS_NOTES.length/4;
+    if(!ic.wasEnergized){
+      ic.musicStart=tt;
+      ic.musicUntil=tt+musicLength;
+    }
     ic.wasEnergized=true;
     if(whistlePresent){
       for(const wc of parts){
         if(wc.def.kind==='whistle'&&wc.retrig){
-          ic.musicStart=tt;ic.musicUntil=tt+4;wc.retrig=false;
+          ic.musicStart=tt;
+          ic.musicUntil=tt+musicLength;
+          wc.retrig=false;
         }
       }
     }
@@ -1046,7 +1055,11 @@ function updateSound(now,tt){
   if(actx&&gn&&osc){
     if(actx.currentTime<audioTestUntil)return;
     const on=soundOn&&!!src&&actx.state==='running';
-    const note=src?tone(src,tt):null;
+    // Para U1, iniciar la melodía desde la primera nota y no desde el
+    // tiempo global de simulación, que ya pudo avanzar antes de habilitar Sonido.
+    const playingIC=src==='music'?parts.find(p=>!p.hidden&&p.def.snd==='music'&&p.vs>1.8):null;
+    const songTime=playingIC?Math.max(0,tt-(playingIC.musicStart||tt)):tt;
+    const note=src?tone(src,songTime):null;
     const freq=note&&note.f>0?note.f:440;
     if(note){osc.type=note.w;osc.frequency.setTargetAtTime(freq,actx.currentTime,.012);}
     gn.gain.setTargetAtTime(on&&note&&note.f>0?.045:0,actx.currentTime,.025);
@@ -1128,7 +1141,11 @@ function frame(now){
   else if(soundOn&&!paused&&parts.some(p=>p.def.kind==='speaker'&&!p.hidden)&&parts.some(p=>p.def.kind==='ic'&&!p.hidden)){
     const chips=parts.filter(p=>p.def.kind==='ic'&&!p.hidden);
     if(chips.every(p=>p.vs<=1.8))w='Sin música: '+chips.map(p=>p.def.code+' recibe '+si(p.vs,'V')).join(', ')+'. Revisa + y − del chip.';
-    else if(!parts.some(p=>p.def.kind==='speaker'&&!p.hidden&&p.snd))w='Sin música: revisa que la bocina una la salida del chip con su retorno o alimentación.';
+    else if(!parts.some(p=>p.def.kind==='speaker'&&!p.hidden&&p.snd)){
+      const musicChips=chips.filter(p=>p.def.snd==='music'&&p.vs>1.8);
+      const finishedSong=musicChips.some(p=>(p.musicUntil||0)>0&&tAcc>=p.musicUntil);
+      if(!finishedSong)w='Sin música: revisa que la bocina una la salida del chip con su retorno o alimentación.';
+    }
   }
   if(w!==warnShown){warnShown=w;$('chipWarn').hidden=!w;$('warnText').textContent=w;}
   renderer.render(scene,camera);
