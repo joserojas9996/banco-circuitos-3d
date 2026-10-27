@@ -997,7 +997,16 @@ function updateSound(now,tt){
         // La bocina del kit puede compartir la línea positiva o el retorno,
         // dependiendo del proyecto del manual. Un borne debe llegar a la
         // salida del IC y el otro a uno de sus rieles de alimentación.
-        const outputA=same(p.a,ic.c),outputB=same(p.b,ic.c);
+        // Proyecto #4: la resistencia de 100 Ω queda en serie con la bocina.
+        // No la tratamos como cortocircuito en el solucionador; solo seguimos
+        // su trayectoria para detectar qué chip proporciona el audio.
+        const signalReaches=(terminal)=>{
+          if(same(terminal,ic.c))return true;
+          return parts.some(q=>!q.hidden&&q.def.kind==='resistor'&&
+            ((same(q.a,ic.c)&&same(q.b,terminal))||
+             (same(q.b,ic.c)&&same(q.a,terminal))));
+        };
+        const outputA=signalReaches(p.a),outputB=signalReaches(p.b);
         const supplyA=same(p.a,ic.a)||same(p.a,ic.b);
         const supplyB=same(p.b,ic.a)||same(p.b,ic.b);
         if((outputA&&supplyB)||(outputB&&supplyA)){
