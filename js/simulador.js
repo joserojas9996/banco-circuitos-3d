@@ -543,7 +543,8 @@ const EXAMPLES=[
   {name:'LED con interruptor de contacto (mantén pulsado)',parts:[['b1',3,5,0],['s2',5,5,3],['blk2',5,3,3],['d1',5,2,2],['r1',3,2,1],['blk2',3,4,1]]},
   {name:'Motor con interruptor',parts:[['b1',3,5,0],['blk4',5,5,3],['m1',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]},
   {name:'LED y fotorresistencia (regula la luz)',parts:[['b1',3,5,0],['blk4',5,5,3],['rp',5,2,2],['d1',3,2,1],['blk2',3,4,1]]},
-  {name:'Música con puente de cable',parts:[['b1',6,5,0],['blk3',8,5,3],['s1',8,3,2,true],['u1',6,3,2],['sp',4,3,2],['blk3',2,3,1],['blk5',2,5,0],['jr',4,2,0,false,6,5]]},
+  {name:'Música con puente de cable (Proyecto #3)',parts:[['wc',1,1,1],['u1',1,3,0],['blk5',1,1,0],['blk3',2,1,1],['blk2',1,4,1],['blk4',1,5,0],['blk2',4,5,0],['s1',5,1,1,true],['b1',5,5,3],['sp',7,0,0],['jb',4,1,0,false,7,0],['jr',3,4,0,false,9,0]]},
+  {name:'Proyecto #4 · Música con resistencia',parts:[['wc',1,1,1],['u1',1,3,0],['blk5',1,1,0],['blk3',2,1,1],['blk2',1,4,1],['blk4',1,5,0],['blk2',4,5,0],['s1',5,1,1,true],['b1',5,5,3],['sp',7,0,0],['r1',3,4,0],['jb',4,1,0,false,7,0],['jr',5,4,0,false,9,0]]},
   {name:'Chip silbador',parts:[['b1',3,5,0],['blk4',5,5,3],['wc',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]}
 ];
 function loadExample(i){clearAll();EXAMPLES[i].parts.forEach(a=>addPart(a[0],a[1],a[2],a[3],a[4],a[5],a[6],true));}
@@ -1004,10 +1005,34 @@ function updateSound(now,tt){
         }
       }
       // El silbador puede funcionar sin chip IC cuando circula corriente por él.
-      if(!active&&p.def.kind==='whistle'&&Math.abs(p.I)>0.003)active='whistle';
+      if(!active&&p.def.kind==='whistle'&&!parts.some(ic=>!ic.hidden&&ic.def.kind==='ic')&&Math.abs(p.I)>0.003)active='whistle';
     }
     p.snd=!!active;
     if(active&&!src)src=active;
+  }
+  // Con el chip silbador, el módulo musical inicia una melodía breve,
+  // vuelve a activarse al tocar el chip y se detiene al abrir el interruptor.
+  const whistlePresent=parts.some(p=>!p.hidden&&p.def.kind==='whistle');
+  for(const ic of parts){
+    if(ic.hidden||ic.def.snd!=='music')continue;
+    const energized=ic.vs>1.8&&!paused;
+    if(!energized){ic.musicUntil=0;ic.wasEnergized=false;continue;}
+    if(!ic.wasEnergized){ic.musicStart=tt;ic.musicUntil=tt+4;}
+    ic.wasEnergized=true;
+    if(whistlePresent){
+      for(const wc of parts){
+        if(wc.def.kind==='whistle'&&wc.retrig){
+          ic.musicStart=tt;ic.musicUntil=tt+4;wc.retrig=false;
+        }
+      }
+    }
+  }
+  if(src==='music'&&whistlePresent){
+    const song=parts.find(p=>!p.hidden&&p.def.snd==='music'&&p.vs>1.8);
+    if(!song||tt>=(song.musicUntil||0)){
+      src=null;
+      for(const p of parts)if(p.def.kind==='speaker'||p.def.kind==='whistle')p.snd=false;
+    }
   }
   if(actx&&gn&&osc){
     if(actx.currentTime<audioTestUntil)return;
