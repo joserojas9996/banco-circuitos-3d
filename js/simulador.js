@@ -539,9 +539,9 @@ function select(p){
 /* ===== Ejemplos con las piezas del kit ===== */
 // [id, x, y, giro, cerrado?, x2, y2]
 const EXAMPLES=[
-  {name:'Lámpara con interruptor',parts:[['b1',3,5,0],['blk4',5,5,3],['l1',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]},
+  {name:'Proyecto #1 · Luz eléctrica e interruptor',parts:[['b1',3,5,0],['blk4',5,5,3],['l1',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]},
   {name:'LED con interruptor de contacto (mantén pulsado)',parts:[['b1',3,5,0],['s2',5,5,3],['blk2',5,3,3],['d1',5,2,2],['r1',3,2,1],['blk2',3,4,1]]},
-  {name:'Motor con interruptor',parts:[['b1',3,5,0],['blk4',5,5,3],['m1',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]},
+  {name:'Proyecto #2 · Motor de corriente directa e interruptor',parts:[['b1',3,5,0],['blk4',5,5,3],['m1',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]},
   {name:'LED y fotorresistencia (regula la luz)',parts:[['b1',3,5,0],['blk4',5,5,3],['rp',5,2,2],['d1',3,2,1],['blk2',3,4,1]]},
   {name:'Música con puente de cable (Proyecto #3)',parts:[['wc',1,1,1],['u1',1,3,0],['blk5',1,1,0],['blk3',2,1,1],['blk2',1,4,1],['blk4',1,5,0],['blk2',4,5,0],['s1',5,1,1,true],['b1',5,5,3],['sp',7,0,0],['jb',4,1,0,false,7,0],['jr',3,4,0,false,9,0]]},
   {name:'Proyecto #4 · Música con resistencia',parts:[['wc',1,1,1],['u1',1,3,0],['blk5',1,1,0],['blk3',2,1,1],['blk2',1,4,1],['blk4',1,5,0],['blk2',4,5,0],['s1',5,1,1,true],['b1',5,5,3],['sp',7,0,0],['r1',3,4,0],['jb',4,1,0,false,7,0],['jr',5,4,0,false,9,0]]},
