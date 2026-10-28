@@ -542,6 +542,8 @@ const EXAMPLES=[
   {name:'Proyecto #1 · Luz eléctrica e interruptor',parts:[['b1',3,5,0],['blk4',5,5,3],['l1',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]},
   {name:'Proyecto #5 · Lámpara y ventilador en serie',parts:[['b1',6,5,0],['blk3',8,3,1],['s1',8,3,3,true],['l1',6,1,0],['blk3',4,1,0],['m1',4,1,1],['blk2',4,3,1],['blk2',4,4,1],['blk3',4,5,0]]},
   {name:'Proyecto #6 · Lámpara y ventilador en paralelo',parts:[['b1',6,5,0],['blk3',8,3,1],['s1',8,3,3,true],['blk5',4,1,0],['m1',4,1,1],['l1',6,1,1],['blk3',4,3,0],['blk3',6,3,1]]},
+  {name:'Proyecto #7 · Diodo emisor de luz (LED)',parts:[['b1',3,5,0],['s1',5,5,3,true],['blk2',5,3,3],['d1',5,2,2],['r1',3,2,1],['blk2',3,4,1]]},
+  {name:'Proyecto #8 · Una dirección para el LED',parts:[['b1',3,5,0],['s1',5,5,3,true],['blk2',5,3,3],['d1',3,2,0],['r1',3,2,1],['blk2',3,4,1]]},
   {name:'LED con interruptor de contacto (mantén pulsado)',parts:[['b1',3,5,0],['s2',5,5,3],['blk2',5,3,3],['d1',5,2,2],['r1',3,2,1],['blk2',3,4,1]]},
   {name:'Proyecto #2 · Motor de corriente directa e interruptor',parts:[['b1',3,5,0],['blk4',5,5,3],['m1',5,2,2],['s1',3,2,1,true],['blk2',3,4,1]]},
   {name:'LED y fotorresistencia (regula la luz)',parts:[['b1',3,5,0],['blk4',5,5,3],['rp',5,2,2],['d1',3,2,1],['blk2',3,4,1]]},
